@@ -134,6 +134,39 @@ Object.entries(pages).forEach(([key,html])=>{
       .cg-marks{background:#1c1c1e!important;color:#f5f5f7!important;border-color:#3a3a3c!important}
       .cg-original-shell{background:transparent!important}
     }`; doc.head.appendChild(unified);
+
+    // Paloma AS: mismo patrón de scroll horizontal que las otras tablas.
+    if(key==='as'){
+      const asTable=doc.getElementById('resultadosTabla');
+      if(asTable && !doc.getElementById('paloma-as-table-wrapper')){
+        const wrapper=doc.createElement('div');
+        wrapper.id='paloma-as-table-wrapper';
+        asTable.parentNode.insertBefore(wrapper,asTable);
+        wrapper.appendChild(asTable);
+      }
+      const asTableScroll=doc.createElement('style');
+      asTableScroll.textContent=`
+        #paloma-as-table-wrapper{
+          width:100%!important;
+          max-width:100%!important;
+          overflow-x:auto!important;
+          overflow-y:visible!important;
+          -webkit-overflow-scrolling:touch!important;
+          touch-action:pan-x pan-y!important;
+          box-sizing:border-box!important;
+        }
+        #paloma-as-table-wrapper #resultadosTabla{
+          width:100%!important;
+          min-width:800px!important;
+          margin-top:20px!important;
+        }
+        #paloma-as-table-wrapper #resultadosTabla th,
+        #paloma-as-table-wrapper #resultadosTabla td{
+          white-space:nowrap!important;
+        }
+      `;
+      doc.head.appendChild(asTableScroll);
+    }
     // El iframe crece con su contenido para que el scroll pertenezca a Safari, no al iframe.
     doc.documentElement.style.overflow='hidden';
     doc.body.style.overflow='visible';
