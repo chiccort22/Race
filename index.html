@@ -234,6 +234,71 @@ iframe{display:block;width:100%;height:1px;border:0;background:#fff;overflow:hid
   .search-panel{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 76px)!important}
 }
 
+
+
+/* === LIQUID GLASS FULL TRANSLÚCIDO — SOLO APARIENCIA === */
+.tabs,
+.search-pill {
+    background: rgba(255,255,255,0.10) !important;
+    border-color: rgba(255,255,255,0.38) !important;
+    box-shadow:
+        0 8px 28px rgba(20,35,60,0.10),
+        inset 0 1px 0 rgba(255,255,255,0.42),
+        inset 0 -1px 0 rgba(255,255,255,0.10) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+}
+
+.tabs::before {
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.18),
+        rgba(255,255,255,0.025) 45%,
+        rgba(255,255,255,0.08)
+    ) !important;
+    opacity: 0.45 !important;
+}
+
+.tab-indicator {
+    background: rgba(255,255,255,0.16) !important;
+    border-color: rgba(255,255,255,0.34) !important;
+    box-shadow:
+        0 3px 12px rgba(20,35,60,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.40) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(175%) !important;
+    backdrop-filter: blur(18px) saturate(175%) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tabs,
+    .search-pill {
+        background: rgba(20,20,24,0.10) !important;
+        border-color: rgba(255,255,255,0.20) !important;
+        box-shadow:
+            0 8px 28px rgba(0,0,0,0.16),
+            inset 0 1px 0 rgba(255,255,255,0.18),
+            inset 0 -1px 0 rgba(255,255,255,0.04) !important;
+    }
+
+    .tabs::before {
+        background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.10),
+            rgba(255,255,255,0.015) 45%,
+            rgba(255,255,255,0.04)
+        ) !important;
+        opacity: 0.42 !important;
+    }
+
+    .tab-indicator {
+        background: rgba(255,255,255,0.10) !important;
+        border-color: rgba(255,255,255,0.20) !important;
+        box-shadow:
+            0 3px 12px rgba(0,0,0,0.14),
+            inset 0 1px 0 rgba(255,255,255,0.18) !important;
+    }
+}
+
 </style>
 </head>
 <body>
