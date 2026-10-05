@@ -1,6 +1,6 @@
 {
-  "name": "Colombofilia - Clasificaciones",
-  "short_name": "Clasificaciones",
+  "name": "Race",
+  "short_name": "Race",
   "description": "Resultados, Campeón de Ruta y Paloma AS",
   "start_url": "./index.html",
   "scope": "./",
