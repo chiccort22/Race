@@ -1,6 +1,30 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- Acceso básico: cambiar ACCESS_PASSWORD invalida la autorización anterior. -->
+<script>
+(function () {
+  const ACCESS_PASSWORD = 'Jaru1996';
+  const ACCESS_KEY = 'race_access_password';
+  window.raceAccess = { password: ACCESS_PASSWORD, key: ACCESS_KEY };
+  let authorized = false;
+  try { authorized = localStorage.getItem(ACCESS_KEY) === ACCESS_PASSWORD; } catch (_) {}
+  if (!authorized) document.documentElement.classList.add('mv-access-locked');
+})();
+</script>
+<style>
+html.mv-access-locked body > :not(#mv-access-gate):not(script):not(style) { display: none !important; }
+#mv-access-gate { display: none; }
+html.mv-access-locked #mv-access-gate { display: flex; position: fixed; inset: 0; z-index: 2147483647; align-items: center; justify-content: center; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); background: #f4f6f9; color: #1a202c; overflow: auto; }
+html.mv-access-locked { overflow: hidden; }
+#mv-access-form { width: 100%; max-width: 360px; padding: 28px; border-radius: 20px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12); text-align: center; }
+#mv-access-form h2 { font-size: 24px; margin-bottom: 12px; }
+#mv-access-form label { display: block; margin-bottom: 16px; color: #718096; }
+#mv-access-input { width: 100%; padding: 13px; border: 1px solid #ccd2da; border-radius: 10px; font: inherit; font-size: 16px; background: #fff; color: #1a202c; }
+#mv-access-form button { width: 100%; padding: 13px; margin-top: 16px; border: 0; border-radius: 10px; background: #1e88e5; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+#mv-access-error { min-height: 20px; margin-top: 12px; color: #c62828; font-size: 14px; }
+</style>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -308,6 +332,35 @@ iframe{display:block;width:100%;height:1px;border:0;background:#fff;overflow:hid
 </style>
 </head>
 <body>
+<div id="mv-access-gate" role="dialog" aria-modal="true" aria-labelledby="mv-access-title">
+  <form id="mv-access-form">
+    <h2 id="mv-access-title">Race</h2>
+    <label for="mv-access-input">Ingresa la contraseña para continuar</label>
+    <input id="mv-access-input" type="password" autocomplete="current-password" placeholder="Contraseña" required>
+    <button type="submit">Entrar</button>
+    <p id="mv-access-error" role="alert" aria-live="polite"></p>
+  </form>
+</div>
+<script>
+(function () {
+  const form = document.getElementById('mv-access-form');
+  const input = document.getElementById('mv-access-input');
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const access = window.raceAccess;
+    if (input.value !== access.password) {
+      document.getElementById('mv-access-error').textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+      input.select();
+      return;
+    }
+    try { localStorage.setItem(access.key, access.password); } catch (_) {}
+    document.documentElement.classList.remove('mv-access-locked');
+    input.value = '';
+    input.blur();
+  });
+})();
+</script>
+
 <div class="app">
 <main class="views">
 <section class="view active" id="view-resultados"><iframe id="frame-resultados" title="Resultados"></iframe></section>
