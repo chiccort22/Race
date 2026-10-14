@@ -1,120 +1,79 @@
-const CACHE = 'race-pwa-v3-offline';
-
-const LOCAL_ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './icon-180.png',
-  './icon-192.png',
-  './icon-512.png'
-];
-
-// Recursos externos usados por la app. Se intentan guardar durante la instalación
-// y también se guardan automáticamente cuando la app los solicita con Internet.
-const EXTERNAL_ASSETS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap'
-];
+// Inicio inmediato desde caché; actualización de HTML en segundo plano.
+const CACHE = 'race-pwa-v3-offline-v3';
+const PREFIX = 'race-pwa-v3-offline-';
+const HOME = new URL('./index.html', self.registration.scope).href;
+const SHELL = [HOME, new URL('./manifest.webmanifest', self.registration.scope).href];
 
 self.addEventListener('install', event => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    await cache.addAll(LOCAL_ASSETS);
-
-    // Una dependencia externa nunca debe impedir que se instale la PWA.
-    await Promise.allSettled(EXTERNAL_ASSETS.map(async url => {
-      const response = await fetch(url, { mode: 'cors', cache: 'no-cache' });
-      if (response && response.ok) await cache.put(url, response.clone());
-    }));
-
-    await self.skipWaiting();
-  })());
+  // No bloqueamos la instalación por una red lenta ni por iconos ausentes.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(self.clients.claim());
 });
 
+async function cachedHome() {
+  const current = await caches.open(CACHE);
+  let hit = await current.match(HOME);
+  if (hit) return hit;
+  // Conservar el HTML de la versión anterior durante la migración.
+  const keys = (await caches.keys()).filter(k => k.startsWith(PREFIX) && k !== CACHE);
+  for (const key of keys) {
+    hit = await (await caches.open(key)).match(HOME);
+    if (hit) {
+      await current.put(HOME, hit.clone());
+      return hit;
+    }
+  }
+  return null;
+}
+
+async function refreshHome() {
+  const response = await fetch(HOME, {cache: 'no-store'});
+  if (response.ok && response.type !== 'opaque') {
+    const cache = await caches.open(CACHE);
+    await cache.put(HOME, response.clone());
+  }
+}
+
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.method !== 'GET' || !/^https?:/.test(req.url)) return;
+  const url = new URL(req.url);
+  const local = url.origin === self.location.origin && url.pathname.startsWith(new URL(self.registration.scope).pathname);
+  const navigation = req.mode === 'navigate' || (local && (url.pathname === new URL(HOME).pathname || url.pathname === new URL(self.registration.scope).pathname));
 
-  const request = event.request;
-  const url = new URL(request.url);
-  const sameOrigin = url.origin === self.location.origin;
-
-  // Navegación: red si está disponible; index.html si estamos offline.
-  if (request.mode === 'navigate') {
+  if (navigation) {
     event.respondWith((async () => {
-      try {
-        const response = await fetch(request);
-        if (response && response.ok) {
-          const cache = await caches.open(CACHE);
-          await cache.put('./index.html', response.clone());
-        }
-        return response;
-      } catch (e) {
-        return (await caches.match(request)) ||
-               (await caches.match('./index.html')) ||
-               (await caches.match('./'));
-      }
-    })());
-    return;
-  }
-
-  // Archivos propios: caché primero para que la interfaz arranque instantáneamente offline.
-  if (sameOrigin) {
-    event.respondWith((async () => {
-      const cached = await caches.match(request);
-      if (cached) return cached;
-
-      try {
-        const response = await fetch(request);
-        if (response && response.ok) {
-          const cache = await caches.open(CACHE);
-          await cache.put(request, response.clone());
-        }
-        return response;
-      } catch (e) {
-        return Response.error();
-      }
-    })());
-    return;
-  }
-
-  // CDN / Google Fonts: usa caché offline y actualízala cuando haya Internet.
-  if (url.protocol === 'https:') {
-    event.respondWith((async () => {
-      const cached = await caches.match(request);
+      const cached = await cachedHome();
       if (cached) {
-        // Actualización silenciosa; no bloquea la respuesta cacheada.
-        event.waitUntil((async () => {
-          try {
-            const fresh = await fetch(request);
-            if (fresh && (fresh.ok || fresh.type === 'opaque')) {
-              const cache = await caches.open(CACHE);
-              await cache.put(request, fresh.clone());
-            }
-          } catch (e) {}
-        })());
+        event.waitUntil(refreshHome().catch(() => {}));
         return cached;
       }
-
+      // Primera apertura: aún no hay HTML local.
       try {
-        const response = await fetch(request);
-        if (response && (response.ok || response.type === 'opaque')) {
-          const cache = await caches.open(CACHE);
-          await cache.put(request, response.clone());
-        }
+        const response = await fetch(req);
+        if (response.ok) await (await caches.open(CACHE)).put(HOME, response.clone());
         return response;
-      } catch (e) {
-        return Response.error();
+      } catch (_) {
+        return new Response('Sin conexión. Abre la aplicación una vez con internet para guardar sus archivos.', {status: 503, headers: {'Content-Type': 'text/plain; charset=utf-8'}});
       }
     })());
+    return;
   }
+
+  // Los recursos externos (Tailwind, fuentes, etc.) se reutilizan si ya se descargaron.
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(req) || await caches.match(req);
+    if (cached) return cached;
+    try {
+      const response = await fetch(req);
+      if (response.ok || response.type === 'opaque') event.waitUntil(cache.put(req, response.clone()).catch(() => {}));
+      return response;
+    } catch (_) {
+      return Response.error();
+    }
+  })());
 });
