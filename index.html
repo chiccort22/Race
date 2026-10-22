@@ -575,6 +575,8 @@ async function exportRacePdf(frame,key,button){
       el.style.setProperty('height','auto','important');
       el.style.setProperty('vertical-align','middle','important');
       el.style.setProperty('box-sizing','border-box','important');
+      el.style.setProperty('color',el.tagName==='TH'?'#ffffff':'#333333','important');
+      el.style.setProperty('background-color',el.tagName==='TH'?'#0056b3':'transparent','important');
     });
     copy.querySelectorAll('th').forEach(el=>{el.style.setProperty('position','static','important');el.style.setProperty('background-color','#0056b3','important');el.style.setProperty('color','#fff','important');});
     copy.querySelectorAll('tr').forEach((tr,i)=>{tr.style.setProperty('background-color',i%2?'#f5f5f5':'#fff','important');});
@@ -594,7 +596,11 @@ async function exportRacePdf(frame,key,button){
         el.style.setProperty('min-width','0','important');
       });
     }
-    holder.append(heading,rule,copy);doc.body.appendChild(holder);
+    // La captura debe ser clara independientemente del tema del dispositivo.
+    holder.classList.add('race-pdf-light-export');
+    const lightStyle=doc.createElement('style');
+    lightStyle.textContent=`.race-pdf-light-export,.race-pdf-light-export table{background:#fff!important;color:#333!important;color-scheme:light!important} .race-pdf-light-export td{color:#333!important;background:transparent!important;border-color:#e2e5ea!important} .race-pdf-light-export th{background:#0056b3!important;color:#fff!important;border-color:#d5dce5!important} .race-pdf-light-export tr:nth-child(odd){background:#fff!important} .race-pdf-light-export tr:nth-child(even){background:#f5f5f5!important} .race-pdf-light-export tr,.race-pdf-light-export td{box-shadow:none!important} .race-pdf-light-export h1{color:#0056b3!important}`;
+    holder.append(lightStyle,heading,rule,copy);doc.body.appendChild(holder);
     const canvas=await window.html2canvas(holder,{backgroundColor:'#fff',scale:Math.min(2,Math.max(1,1800/holder.scrollWidth)),useCORS:true,logging:false,windowWidth:Math.max(doc.documentElement.scrollWidth,holder.scrollWidth)});
     // Página personalizada al tamaño del resultado: ninguna columna se recorta.
     const mmPerPx=.264583;
@@ -603,7 +609,10 @@ async function exportRacePdf(frame,key,button){
     const pdf=new window.jspdf.jsPDF({orientation:pageWidth>pageHeight?'landscape':'portrait',unit:'mm',format:[pageWidth,pageHeight],compress:true});
     pdf.addImage(canvas.toDataURL('image/jpeg',.94),'JPEG',0,0,pageWidth,pageHeight,undefined,'FAST');
     const names={resultados:'Resultados',ruta:'Campeon de Ruta',as:'Paloma AS'};
-    const filename=names[key]+'.pdf';
+    // Recuperar el nombre del Excel utilizado, también después de recargar la PWA.
+    const savedBase=key==='resultados' ? (doc.defaultView?.localStorage?.getItem('baseFileName') || localStorage.getItem('baseFileName')) : null;
+    const filename=((key==='resultados' && savedBase ? savedBase : names[key])
+      .replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').trim() || names[key])+'.pdf';
     const blob=pdf.output('blob');
     const file=new File([blob],filename,{type:'application/pdf'});
     // En iOS/PWA, compartir el archivo evita la navegación a una URL temporal de localhost.
